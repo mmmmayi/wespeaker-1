@@ -56,8 +56,8 @@ def train(config='conf/config.yaml', **kwargs):
             os.makedirs(model_dir)
         except IOError:
             print(model_dir + " already exists !!!")
-            if checkpoint is None:
-                exit(1)
+            #if checkpoint is None:
+                #exit(1)
     dist.barrier()  # let the rank 0 mkdir first
 
     logger = get_logger(configs['exp_dir'], 'train.log')
@@ -84,8 +84,8 @@ def train(config='conf/config.yaml', **kwargs):
             len(train_utt_spk_list), len(spk2id_dict)))
 
     # dataset and dataloader
-    train_dataset = Dataset(configs['data_type'],
-                            configs['train_data'],
+    train_dataset = Dataset(configs['data_type'], #data_type="shard" 
+                            configs['train_data'], #${data}/vox2_dev/${data_type}.list
                             configs['dataset_args'],
                             spk2id_dict,
                             reverb_lmdb_file=configs.get('reverb_data', None),
@@ -208,6 +208,8 @@ def train(config='conf/config.yaml', **kwargs):
                   margin_scheduler,
                   epoch,
                   logger,
+                  reverb_lmdb_file=configs.get('reverb_data', None),
+                  noise_lmdb_file=configs.get('noise_data', None),
                   log_batch_interval=configs['log_batch_interval'],
                   device=device)
 

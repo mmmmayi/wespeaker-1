@@ -15,10 +15,11 @@
 
 from contextlib import nullcontext
 import tableprint as tp
-
 import torch
 import torchnet as tnt
-
+import tqdm
+from wespeaker.dataset.processor import add_reverb_noise_cuda
+from wespeaker.dataset.lmdb_data import LmdbData
 
 def run_epoch(dataloader,
               loader_size,
@@ -29,6 +30,8 @@ def run_epoch(dataloader,
               margin_scheduler,
               epoch,
               logger,
+              reverb_lmdb_file,
+              noise_lmdb_file,
               log_batch_interval=100,
               device=torch.device('cuda')):
     model.train()
@@ -44,20 +47,23 @@ def run_epoch(dataloader,
 
     with torch.set_grad_enabled(True), model_context():
         for i, batch in enumerate(dataloader):
+            
             utts = batch['key']
             targets = batch['label']
-            features = batch['feat']
-
+            wav = batch['wav'].to(device)
+            reverb_data = LmdbData(reverb_lmdb_file)
+            noise_data = LmdbData(noise_lmdb_file)
+            wav = add_reverb_noise_cuda(wav, reverb_data, noise_data)
+            wav = wav.squeeze()
             cur_iter = (epoch - 1) * loader_size + i
             scheduler.step(cur_iter)
             margin_scheduler.step(cur_iter)
 
-            features = features.float().to(device)  # (B,T,F)
+            #features = features.float().to(device)  # (B,T,F)
             targets = targets.long().to(device)
-            outputs = model(features)  # (embed_a,embed_b) in most cases
+            outputs = model(wav)  # (embed_a,embed_b) in most cases
             embeds = outputs[-1] if isinstance(outputs, tuple) else outputs
             outputs = model.module.projection(embeds, targets)
-
             loss = criterion(outputs, targets)
             # loss, acc
             loss_meter.add(loss.item())

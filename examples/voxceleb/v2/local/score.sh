@@ -15,7 +15,8 @@
 # limitations under the License.
 
 exp_dir=
-trials="vox1_O_cleaned.kaldi vox1_E_cleaned.kaldi vox1_H_cleaned.kaldi"
+#trials="vox1_O_cleaned.kaldi vox1_E_cleaned.kaldi vox1_H_cleaned.kaldi"
+trials="sub_vox2.kaldi"
 data=data
 
 stage=-1
@@ -27,13 +28,14 @@ stop_stage=-1
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
   echo "apply cosine scoring ..."
   mkdir -p ${exp_dir}/scores
-  trials_dir=${data}/vox1/trials
+  #trials_dir=${data}/vox1/trials
+  trials_dir=${data}/sub_vox2_clean/trials
   for x in $trials; do
     echo $x
     python wespeaker/bin/score.py \
       --exp_dir ${exp_dir} \
-      --eval_scp_path ${exp_dir}/embeddings/vox1/xvector.scp \
-      --cal_mean True \
+      --eval_scp_path ${exp_dir}/embeddings/sub_vox2_clean/xvector.scp \
+      --cal_mean False \
       --cal_mean_dir ${exp_dir}/embeddings/vox2_dev \
       ${trials_dir}/${x}
   done

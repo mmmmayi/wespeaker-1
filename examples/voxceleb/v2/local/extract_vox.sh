@@ -24,9 +24,13 @@ data=data
 . tools/parse_options.sh
 set -e
 
-data_name_array=("vox2_dev" "vox1")
-data_list_path_array=("${data}/vox2_dev/${data_type}.list" "${data}/vox1/${data_type}.list")
-data_scp_path_array=("${data}/vox2_dev/wav.scp" "${data}/vox1/wav.scp") # to count the number of wavs
+#data_name_array=("vox2_dev" "vox1")
+#data_list_path_array=("${data}/vox2_dev/${data_type}.list" "${data}/vox1/${data_type}.list")
+#data_scp_path_array=("${data}/vox2_dev/wav.scp" "${data}/vox1/wav.scp") # to count the number of wavs
+data_name_array=("sub_vox2_clean")
+data_list_path_array=( "${data}/sub_vox2_clean/${data_type}.list")
+data_scp_path_array=( "${data}/sub_vox2_clean/wav.scp") # to count the number of wavs
+
 nj_array=($nj $nj)
 batch_size_array=(16 1) # batch_size of test set must be 1 !!!
 num_workers_array=(4 1)

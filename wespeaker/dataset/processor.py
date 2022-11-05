@@ -82,21 +82,29 @@ def tar_file_and_group(data):
         valid = True
         for tarinfo in stream:
             name = tarinfo.name
+            #print(name) #'id04269/XVKL3epThEE/00184.wav'
+            
             pos = name.rfind('.')
             assert pos > 0
             prefix, postfix = name[:pos], name[pos + 1:]
             if prev_prefix is not None and prefix != prev_prefix:
                 example['key'] = prev_prefix
                 if valid:
+                    #print(example)
                     yield example
                 example = {}
                 valid = True
             with stream.extractfile(tarinfo) as file_obj:
+                #print(postfix) #spk first, then wav
+                
                 try:
                     if postfix in ['spk']:
                         example[postfix] = file_obj.read().decode(
                             'utf8').strip()
+                        #print(example[postfix]) #'id04269
+                        #quit()
                     elif postfix in AUDIO_FORMAT_SETS:
+
                         waveform, sample_rate = torchaudio.load(file_obj)
                         example['wav'] = waveform
                         example['sample_rate'] = sample_rate
@@ -261,6 +269,7 @@ def speed_perturb(data, num_spks):
                 waveform, sample_rate,
                 [['speed', str(speeds[speed_idx])], ['rate',
                                                      str(sample_rate)]])
+
             sample['wav'] = wav
             sample['label'] = sample['label'] + num_spks * speed_idx
 
@@ -318,6 +327,88 @@ def random_chunk(data, chunk_len, data_type='shard/raw/feat'):
             sample['wav'] = wav.unsqueeze(0)
         yield sample
 
+def add_reverb_noise_cuda(audios,
+                     reverb_source,
+                     noise_source,
+                     resample_rate=16000,
+                     aug_prob=0.6):
+    """ Add reverb & noise aug
+
+        Args:
+            data: Iterable[{key, wav, label, sample_rate}]
+            reverb_source: reverb LMDB data source
+            noise_source: noise LMDB data source
+            resample_rate: resample rate for reverb/noise data
+            aug_prob: aug probability
+
+        Returns:
+            Iterable[{key, wav, label, sample_rate}]
+    """
+    audio_len = audios.shape[-1]
+    batch = audios.shape[0]
+    num_reverb = int(batch*aug_prob*0.5)
+
+    #split idx for reverb, noise and normal
+    total = list(range(batch))
+    random.shuffle(total)
+    reverb_idx = torch.tensor(total[:num_reverb])
+    noisy_idx = torch.tensor(total[num_reverb:num_reverb*2])
+    normal_idx = torch.tensor(total[num_reverb*2:])
+
+    # reverb
+    _, rir_data = reverb_source.random_one()
+    rir_sr, rir_audio = wavfile.read(io.BytesIO(rir_data))
+    rir_audio = rir_audio.astype(np.float32)
+    if rir_sr != resample_rate:
+        rir_audio = signal.resample(rir_audio,int(len(rir_audio) / rir_sr * resample_rate))
+    rir_audio = torch.from_numpy(rir_audio).cuda()
+    rir_audio = rir_audio / torch.sqrt(torch.sum(rir_audio**2))
+    rir = torch.flip(rir_audio, (0,)).view(1,1,-1)
+    audio_rir = audios[reverb_idx]
+    out_audio = torch.nn.functional.conv1d(audio_rir, rir, padding=rir.shape[-1]-1)
+    out_audio = out_audio[:,:,:audio_len]
+    out_audio = out_audio / (torch.amax(torch.abs(out_audio),dim=(-1,-2)).unsqueeze(1).unsqueeze(1) + 1e-4)
+    audios[reverb_idx]=out_audio
+
+    # add noise
+    
+    audio_noisy = audios[noisy_idx]
+    audio_db = 10 * torch.log10(torch.mean(audio_noisy**2,dim=(-1,-2)) + 1e-4)
+    noise_list = torch.empty(num_reverb,1,audio_len).cuda()
+    snr_list = torch.empty(num_reverb).cuda()
+    for i in range(num_reverb):
+        key, noise_data = noise_source.random_one()
+        if key.startswith('noise'):
+            snr_range = [0, 15]
+        elif key.startswith('speech'):
+            snr_range = [10, 30]
+        elif key.startswith('music'):
+            snr_range = [5, 15]
+        else:
+            snr_range = [0, 15]
+        noise_sr, noise_audio = wavfile.read(io.BytesIO(noise_data))
+        noise_audio = noise_audio.astype(np.float32) / (1 << 15)
+        noise_audio = torch.from_numpy(noise_audio).cuda()
+
+        if noise_sr != resample_rate:
+            noise_audio = get_random_chunk(noise_audio,int(audio_len / resample_rate * noise_sr))
+            noise_audio = signal.resample(noise_audio, audio_len)
+        else:
+            noise_audio = get_random_chunk(noise_audio, audio_len)
+        noise_list[i] = noise_audio
+
+        noise_snr = random.uniform(snr_range[0], snr_range[1])
+        snr_list[i] = noise_snr
+    noise_db = 10 * torch.log10(torch.mean(noise_list**2,dim=(-1,-2)) + 1e-4)
+    
+    
+    noise_audio = torch.sqrt(10**((audio_db - noise_db - snr_list) / 10)).unsqueeze(1).unsqueeze(1)* noise_audio
+    out_audio = audio_noisy + noise_audio
+    out_audio = out_audio / (torch.amax(torch.abs(out_audio),dim=(-1,-2)).unsqueeze(1).unsqueeze(1) + 1e-4)
+
+    audios[noisy_idx]=out_audio
+    
+    return audios
 
 def add_reverb_noise(data,
                      reverb_source,
@@ -344,6 +435,7 @@ def add_reverb_noise(data,
             if aug_type == 1:
                 # add reverberation
                 audio = sample['wav'].numpy()[0]
+                #print(audio.shape) #(160240,)
                 audio_len = audio.shape[0]
 
                 _, rir_data = reverb_source.random_one()
@@ -359,6 +451,7 @@ def add_reverb_noise(data,
             else:
                 # add additive noise
                 audio = sample['wav'].numpy()[0]
+                
                 audio_len = audio.shape[0]
                 audio_db = 10 * np.log10(np.mean(audio**2) + 1e-4)
 
@@ -394,7 +487,6 @@ def add_reverb_noise(data,
 
         yield sample
 
-
 def compute_fbank(data,
                   num_mel_bins=80,
                   frame_length=25,
@@ -417,6 +509,7 @@ def compute_fbank(data,
         waveform = sample['wav']
         waveform = waveform * (1 << 15)
         # Only keep key, feat, label
+        #yield dict(key=sample['key'], label=sample['label'], feat=torch.randn(200,80))
         mat = kaldi.fbank(waveform,
                           num_mel_bins=num_mel_bins,
                           frame_length=frame_length,
@@ -442,8 +535,11 @@ def apply_cmvn(data, norm_mean=True, norm_var=False):
         assert 'feat' in sample
         assert 'label' in sample
         mat = sample['feat']
+        print(mat.shape)
         if norm_mean:
             mat = mat - torch.mean(mat, dim=0)
+        print(mat.shape)
+        quit()
         if norm_var:
             mat = mat / torch.sqrt(torch.var(mat, dim=0) + 1e-8)
         yield dict(key=sample['key'], label=sample['label'], feat=mat)

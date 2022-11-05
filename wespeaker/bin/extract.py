@@ -25,7 +25,7 @@ from wespeaker.dataset.dataset import Dataset
 from wespeaker.models.speaker_model import get_speaker_model
 from wespeaker.utils.checkpoint import load_checkpoint
 from wespeaker.utils.utils import parse_config_or_kwargs, validate_path
-
+from wespeaker.models.projections import get_projection
 
 def extract(config='conf/config.yaml', **kwargs):
     # parse configs first
@@ -41,10 +41,11 @@ def extract(config='conf/config.yaml', **kwargs):
     torch.backends.cudnn.benchmark = False
 
     model = get_speaker_model(configs['model'])(**configs['model_args'])
+    projection = get_projection(configs['projection_args'])
+    model.add_module("projection", projection)
     load_checkpoint(model, model_path)
     device = torch.device("cuda")
     model.to(device).eval()
-
     # test_configs
     test_conf = copy.deepcopy(configs['dataset_args'])
     test_conf['speed_perturb'] = False
@@ -54,7 +55,6 @@ def extract(config='conf/config.yaml', **kwargs):
         test_conf['mfcc_args']['dither'] = 0.0
     test_conf['spec_aug'] = False
     test_conf['shuffle'] = False
-
     dataset = Dataset(configs['data_type'],
                       configs['data_list'],
                       test_conf,
@@ -78,10 +78,18 @@ def extract(config='conf/config.yaml', **kwargs):
             for _, batch in tqdm(enumerate(dataloader)):
                 utts = batch['key']
                 features = batch['feat']
+                targets = batch['label']
+
                 features = features.float().to(device)  # (B,T,F)
+                targets = targets.long().to(device)
+
                 # Forward through model
                 outputs = model(features)  # embed or (embed_a, embed_b)
                 embeds = outputs[-1] if isinstance(outputs, tuple) else outputs
+                outputs = model.projection(embeds, targets)
+              
+                print(outputs.shape)#[17982]
+                quit()
                 embeds = embeds.cpu().detach().numpy()  # (B,F)
 
                 for i, utt in enumerate(utts):

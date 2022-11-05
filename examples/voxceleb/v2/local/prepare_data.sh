@@ -80,11 +80,11 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
 
   mkdir -p ${data}/musan ${data}/rirs ${data}/vox1 ${data}/vox2_dev
   # musan
-  find $(pwd)/${rawdata_dir}/musan -name "*.wav" | awk -F"/" '{print $(NF-2)"/"$(NF-1)"/"$NF,$0}' >${data}/musan/wav.scp
+  find /data_a11/mayi/dataset/musan -name "*.wav" | awk -F"/" '{print $(NF-2)"/"$(NF-1)"/"$NF,$0}' >${data}/musan/wav.scp
   # rirs
-  find $(pwd)/${rawdata_dir}/RIRS_NOISES/simulated_rirs -name "*.wav" | awk -F"/" '{print $(NF-2)"/"$(NF-1)"/"$NF,$0}' >${data}/rirs/wav.scp
+  find /data_a11/mayi/dataset/RIRS_NOISES/simulated_rirs -name "*.wav" | awk -F"/" '{print $(NF-2)"/"$(NF-1)"/"$NF,$0}' >${data}/rirs/wav.scp
   # vox1
-  find $(pwd)/${rawdata_dir}/voxceleb1 -name "*.wav" | awk -F"/" '{print $(NF-2)"/"$(NF-1)"/"$NF,$0}' | sort >${data}/vox1/wav.scp
+  find /data_a11/mayi/dataset/VoxCeleb_latest/VoxCeleb1/wav -name "*.wav" | awk -F"/" '{print $(NF-2)"/"$(NF-1)"/"$NF,$0}' | sort >${data}/vox1/wav.scp
   awk '{print $1}' ${data}/vox1/wav.scp | awk -F "/" '{print $0,$1}' >${data}/vox1/utt2spk
   ./tools/utt2spk_to_spk2utt.pl ${data}/vox1/utt2spk >${data}/vox1/spk2utt
   if [ ! -d ${data}/vox1/trials ]; then
@@ -101,10 +101,23 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
     awk '{if($1==0)label="nontarget";else{label="target"}; print $2,$3,label}' ${data}/vox1/trials/vox1-H\(cleaned\).txt >${data}/vox1/trials/vox1_H_cleaned.kaldi
     awk '{if($1==0)label="nontarget";else{label="target"}; print $2,$3,label}' ${data}/vox1/trials/vox1-E\(cleaned\).txt >${data}/vox1/trials/vox1_E_cleaned.kaldi
   fi
+fi
   # vox2
-  find $(pwd)/${rawdata_dir}/voxceleb2_wav -name "*.wav" | awk -F"/" '{print $(NF-2)"/"$(NF-1)"/"$NF,$0}' | sort >${data}/vox2_dev/wav.scp
+if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
+   
+  find /data_a11/mayi/dataset/VoxCeleb_latest/VoxCeleb2/dev/aac_split -name "*.wav" | awk -F"/" '{print $(NF-2)"/"$(NF-1)"/"$NF,$0}' | sort >${data}/vox2_dev/wav.scp
   awk '{print $1}' ${data}/vox2_dev/wav.scp | awk -F "/" '{print $0,$1}' >${data}/vox2_dev/utt2spk
   ./tools/utt2spk_to_spk2utt.pl ${data}/vox2_dev/utt2spk >${data}/vox2_dev/spk2utt
 
   echo "Success !!!"
+fi
+
+if [ ${stage} -le 6 ] && [ ${stop_stage} -ge 6 ]; then
+#  awk '{print $1}' ${data}/sub_vox2_noisy/wav.scp | awk -F "/" '{print $0,$1}' >${data}/sub_vox2_noisy/utt2spk
+#  ./tools/utt2spk_to_spk2utt.pl ${data}/sub_vox2_noisy/utt2spk >${data}/sub_vox2_noisy/spk2utt
+#  awk '{if($1==0)label="nontarget";else{label="target"}; print $2,$3,label}' /data_a11/mayi/project/ECAPATDNN-analysis/sub_vox2.txt >${data}/sub_vox2_noisy/trials/sub_vox2.kaldi
+  awk '{print $1}' ${data}/sub_vox2_clean/wav.scp | awk -F "/" '{print $0,$1}' >${data}/sub_vox2_clean/utt2spk
+  ./tools/utt2spk_to_spk2utt.pl ${data}/sub_vox2_clean/utt2spk >${data}/sub_vox2_clean/spk2utt
+  awk '{if($1==0)label="nontarget";else{label="target"}; print $2,$3,label}' /data_a11/mayi/project/ECAPATDNN-analysis/sub_vox2.txt >${data}/sub_vox2_clean/trials/sub_vox2.kaldi
+
 fi

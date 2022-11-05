@@ -21,7 +21,15 @@ def load_checkpoint(model: torch.nn.Module, path: str):
         checkpoint = torch.load(path)
     else:
         checkpoint = torch.load(path, map_location='cpu')
+    #for name, param in checkpoint.items():
+        #if 'projection' in name:
+            #print(param.shape)
+            #print(name)
+    #quit()
     model.load_state_dict(checkpoint, strict=False)
+    #self_state = model.state_dict()
+    #for name in self_state:
+        #print(name)
 
 
 def save_checkpoint(model: torch.nn.Module, path: str):

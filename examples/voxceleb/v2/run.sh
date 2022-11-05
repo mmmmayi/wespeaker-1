@@ -5,19 +5,20 @@
 
 . ./path.sh || exit 1
 
-stage=-1
-stop_stage=-1
+stage=3
+stop_stage=3
 
 data=data
 data_type="shard"  # shard/raw
 
 config=conf/resnet.yaml
-exp_dir=exp/ResNet34-TSTP-emb256-fbank80-num_frms200-aug0.6-spTrue-saFalse-ArcMargin-SGD-epoch150
-gpus="[0,1]"
+exp_dir=exp/debug
+gpus="[0]"
 num_avg=10
 checkpoint=
 
-trials="vox1_O_cleaned.kaldi vox1_E_cleaned.kaldi vox1_H_cleaned.kaldi"
+#trials="vox1_O_cleaned.kaldi vox1_E_cleaned.kaldi vox1_H_cleaned.kaldi"
+trials="sub_vox2.kaldi"
 score_norm_method="asnorm"  # asnorm/snorm
 top_n=300
 
@@ -28,12 +29,13 @@ lm_config=conf/resnet_lm.yaml
 
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
   echo "Prepare datasets ..."
-  ./local/prepare_data.sh --stage 2 --stop_stage 4 --data ${data}
+  ./local/prepare_data.sh --stage 6 --stop_stage 6 --data ${data}
 fi
 
 if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
   echo "Covert train and test data to ${data_type}..."
-  for dset in vox2_dev vox1; do
+  #for dset in vox2_dev vox1; do
+  for dset in sub_vox2_clean; do
     if [ $data_type == "shard" ]; then
       python tools/make_shard_list.py --num_utts_per_shard 1000 \
           --num_threads 16 \
@@ -47,9 +49,9 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
     fi
   done
   # Convert all musan data to LMDB
-  python tools/make_lmdb.py ${data}/musan/wav.scp ${data}/musan/lmdb
+  #python tools/make_lmdb.py ${data}/musan/wav.scp ${data}/musan/lmdb
   # Convert all rirs data to LMDB
-  python tools/make_lmdb.py ${data}/rirs/wav.scp ${data}/rirs/lmdb
+  #python tools/make_lmdb.py ${data}/rirs/wav.scp ${data}/rirs/lmdb
 fi
 
 if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
@@ -70,16 +72,16 @@ fi
 
 if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
   echo "Do model average ..."
-  avg_model=$exp_dir/models/avg_model.pt
-  python wespeaker/bin/average_model.py \
-    --dst_model $avg_model \
-    --src_path $exp_dir/models \
-    --num ${num_avg}
+  avg_model=$exp_dir/models/model_0.pt
+  #python wespeaker/bin/average_model.py \
+    #--dst_model $avg_model \
+    #--src_path $exp_dir/models \
+    #--num ${num_avg}
 
   echo "Extract embeddings ..."
   local/extract_vox.sh \
     --exp_dir $exp_dir --model_path $avg_model \
-    --nj 4 --gpus $gpus --data_type $data_type --data ${data}
+    --nj 2 --gpus $gpus --data_type $data_type --data ${data}
 fi
 
 if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then

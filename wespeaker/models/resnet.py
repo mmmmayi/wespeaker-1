@@ -29,7 +29,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import wespeaker.models.pooling_layers as pooling_layers
-
+import torchaudio
 
 class BasicBlock(nn.Module):
     expansion = 1
@@ -123,7 +123,8 @@ class ResNet(nn.Module):
         self.embed_dim = embed_dim
         self.stats_dim = int(feat_dim / 8) * m_channels * 8
         self.two_emb_layer = two_emb_layer
-
+        self.Spec = torchaudio.transforms.Spectrogram(n_fft=512, win_length=400, hop_length=160, pad=0, window_fn=torch.hamming_window, power=2.0)
+        self.Mel_scale = torchaudio.transforms.MelScale(80,16000,20,7600,512//2+1)
         self.conv1 = nn.Conv2d(1,
                                m_channels,
                                kernel_size=3,
@@ -169,7 +170,12 @@ class ResNet(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
-        x = x.permute(0, 2, 1)  # (B,T,F) => (B,F,T)
+        with torch.no_grad():
+            x = (self.Spec(x)+1e-8)
+            x = (self.Mel_scale(x)+1e-8).log()
+            #print(x.shape) #[128,80,1002]
+            x = x - torch.mean(x, dim=-1, keepdim=True)
+        #x = x.permute(0, 2, 1)  # (B,T,F) => (B,F,T)
 
         x = x.unsqueeze_(1)
         out = F.relu(self.bn1(self.conv1(x)))

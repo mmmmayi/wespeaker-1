@@ -155,24 +155,26 @@ def Dataset(data_type,
         dataset = Processor(dataset, processor.parse_feat)
     # Local shuffle
     if shuffle:
+        
         dataset = Processor(dataset, processor.shuffle, **configs['shuffle_args'])
 
     # spk2id
     dataset = Processor(dataset, processor.spk_to_id, spk2id_dict)
-
     if data_type == 'feat':
         if not whole_utt:
             # random chunk
             chunk_len = num_frms = configs.get('num_frms', 200)
             dataset = Processor(dataset, processor.random_chunk, chunk_len, 'feat')
+         
     else:
         # resample
         resample_rate = configs.get('resample_rate', 16000)
         dataset = Processor(dataset, processor.resample, resample_rate)
         # speed perturb
         speed_perturb_flag = configs.get('speed_perturb', True)
-        if speed_perturb_flag:
-            dataset = Processor(dataset, processor.speed_perturb, len(spk2id_dict))
+        #if speed_perturb_flag:
+            #dataset = Processor(dataset, processor.speed_perturb, len(spk2id_dict))
+        
         if not whole_utt:
             # random chunk
             num_frms = configs.get('num_frms', 200)
@@ -182,15 +184,17 @@ def Dataset(data_type,
                                                      25) * resample_rate // 1000
             chunk_len = (num_frms - 1) * frame_shift + frame_length
             dataset = Processor(dataset, processor.random_chunk, chunk_len, data_type)
+        #return dataset
         # add reverb & noise
         if reverb_lmdb_file and noise_lmdb_file:
             reverb_data = LmdbData(reverb_lmdb_file)
             noise_data = LmdbData(noise_lmdb_file)
             dataset = Processor(dataset, processor.add_reverb_noise, reverb_data,
                                 noise_data, resample_rate, configs.get('aug_prob', 0.6))
+        return dataset
         # compute fbank
         dataset = Processor(dataset, processor.compute_fbank, **configs['fbank_args'])
-
+    
     # apply cmvn
     dataset = Processor(dataset, processor.apply_cmvn)
 

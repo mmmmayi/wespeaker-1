@@ -87,6 +87,7 @@ def main():
                         format='%(asctime)s %(levelname)s %(message)s')
 
     wav_table = {}
+    #print(args.wav_file)#data/vox2_dev/wav.scp
     with open(args.wav_file, 'r', encoding='utf8') as fin:
         for line in fin:
             arr = line.strip().split()
