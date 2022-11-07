@@ -172,8 +172,8 @@ def Dataset(data_type,
         dataset = Processor(dataset, processor.resample, resample_rate)
         # speed perturb
         speed_perturb_flag = configs.get('speed_perturb', True)
-        #if speed_perturb_flag:
-            #dataset = Processor(dataset, processor.speed_perturb, len(spk2id_dict))
+        if speed_perturb_flag:
+            dataset = Processor(dataset, processor.speed_perturb, len(spk2id_dict))
         
         if not whole_utt:
             # random chunk
@@ -191,7 +191,7 @@ def Dataset(data_type,
             noise_data = LmdbData(noise_lmdb_file)
             dataset = Processor(dataset, processor.add_reverb_noise, reverb_data,
                                 noise_data, resample_rate, configs.get('aug_prob', 0.6))
-        return dataset
+        #return dataset
         # compute fbank
         dataset = Processor(dataset, processor.compute_fbank, **configs['fbank_args'])
     

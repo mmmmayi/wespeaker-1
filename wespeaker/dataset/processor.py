@@ -535,11 +535,8 @@ def apply_cmvn(data, norm_mean=True, norm_var=False):
         assert 'feat' in sample
         assert 'label' in sample
         mat = sample['feat']
-        print(mat.shape)
         if norm_mean:
             mat = mat - torch.mean(mat, dim=0)
-        print(mat.shape)
-        quit()
         if norm_var:
             mat = mat / torch.sqrt(torch.var(mat, dim=0) + 1e-8)
         yield dict(key=sample['key'], label=sample['label'], feat=mat)

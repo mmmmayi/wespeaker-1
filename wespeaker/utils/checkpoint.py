@@ -27,9 +27,11 @@ def load_checkpoint(model: torch.nn.Module, path: str):
             #print(name)
     #quit()
     model.load_state_dict(checkpoint, strict=False)
+    #for name, param in model.named_parameters():
+        #print(param.requires_grad)
     #self_state = model.state_dict()
     #for name in self_state:
-        #print(name)
+        #print()
 
 
 def save_checkpoint(model: torch.nn.Module, path: str):

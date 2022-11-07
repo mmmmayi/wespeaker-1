@@ -5,14 +5,14 @@
 
 . ./path.sh || exit 1
 
-stage=3
-stop_stage=3
+stage=4
+stop_stage=4
 
 data=data
 data_type="shard"  # shard/raw
 
-config=conf/resnet.yaml
-exp_dir=exp/debug
+config=conf/voxceleb_resnet34_LM.yaml
+exp_dir=exp/ResNet34-TSTP-emb256-fbank80-num_frms200-aug0.6-spTrue-saFalse-ArcMargin-SGD-epoch150-LM
 gpus="[0]"
 num_avg=10
 checkpoint=
@@ -81,7 +81,7 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
   echo "Extract embeddings ..."
   local/extract_vox.sh \
     --exp_dir $exp_dir --model_path $avg_model \
-    --nj 2 --gpus $gpus --data_type $data_type --data ${data}
+    --nj 1 --gpus $gpus --data_type $data_type --data ${data}
 fi
 
 if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then

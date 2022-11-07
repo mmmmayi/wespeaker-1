@@ -29,9 +29,11 @@ gpus="[0,1]"
 . tools/parse_options.sh
 set -e
 
+
 embed_dir=${exp_dir}/embeddings/${store_dir}
 log_dir=${embed_dir}/log
 [ ! -d ${log_dir} ] && mkdir -p ${log_dir}
+
 
 # split the data_list file into sub_file, then we can use multi-gpus to extract embeddings
 data_num=$(wc -l ${data_list} | awk '{print $1}')

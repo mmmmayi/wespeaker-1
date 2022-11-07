@@ -39,3 +39,6 @@ tensorboard
 **/*build*
 
 *.onnx
+**/data/**
+**/exp/**
+*.out

@@ -170,15 +170,18 @@ class ResNet(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
+        '''
         with torch.no_grad():
             x = (self.Spec(x)+1e-8)
             x = (self.Mel_scale(x)+1e-8).log()
             #print(x.shape) #[128,80,1002]
             x = x - torch.mean(x, dim=-1, keepdim=True)
+        '''
         #x = x.permute(0, 2, 1)  # (B,T,F) => (B,F,T)
-
-        x = x.unsqueeze_(1)
-        out = F.relu(self.bn1(self.conv1(x)))
+        x = x.unsqueeze(1)
+        feature = x.requires_grad_()
+ 
+        out = F.relu(self.bn1(self.conv1(feature)))
         out = self.layer1(out)
         out = self.layer2(out)
         out = self.layer3(out)
@@ -193,7 +196,7 @@ class ResNet(nn.Module):
             embed_b = self.seg_2(out)
             return embed_a, embed_b
         else:
-            return torch.tensor(0.0), embed_a
+            return embed_a, feature
 
 
 
